@@ -20,7 +20,7 @@ install:
   - conda info -a
 
   # Replace dep1 dep2 ... with your dependencies
-  - conda env create -f orm.yml
+  - conda env create -f tp.yml
   - source activate openrevman
 # command to run tests
 script:
