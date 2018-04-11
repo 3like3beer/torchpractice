@@ -75,6 +75,9 @@ Vagrant.configure("2") do |config|
    conda info -a
    conda env create -f /vagrant/tp.yml
    source activate torchpractice
+   export PATH="$HOME/miniconda/bin:$PATH"
+   echo 'export PATH="$HOME/miniconda/bin:$PATH"' >> .profile
+   echo 'source activate torchpractice' >> .profile
 
    SHELL
 end
