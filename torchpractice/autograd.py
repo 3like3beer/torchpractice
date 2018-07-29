@@ -14,3 +14,8 @@ print(y)
 ###############################################################
 # ``y`` was created as a result of an operation, so it has a ``grad_fn``.
 print(y.grad_fn)
+
+x = torch.rand(5, 3)
+print(x)
+
+print(torch.cuda.is_available())
