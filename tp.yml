@@ -48,5 +48,6 @@ dependencies:
     - requests==2.18.4
     - torch==0.3.1.post3
     - urllib3==1.22
+    - gym
 prefix: /home/vagrant/miniconda/envs/torchpractice
 
