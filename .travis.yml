@@ -24,7 +24,7 @@ install:
   - source activate torchpractice
 # command to run tests
 script:
-  - nosetests -v --with-coverage --cover-tests
+  - nosetests -v --with-coverage --cover-tests --cover-package=torchpractice
 after_success:
   - coveralls
 branches:
