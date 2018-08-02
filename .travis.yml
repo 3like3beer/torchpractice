@@ -20,7 +20,7 @@ install:
   # - conda info -a
 
   # Replace dep1 dep2 ... with your dependencies
-  - conda env create -q -f tp.yml
+  - conda env create -q -f tp.yml > log.txt
   - source activate torchpractice
 # command to run tests
 script:
