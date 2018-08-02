@@ -17,10 +17,10 @@ install:
   - conda config --set always_yes yes --set changeps1 no
   - conda update -q conda
   # Useful for debugging any issues with conda
-  - conda info -a
+  # - conda info -a
 
   # Replace dep1 dep2 ... with your dependencies
-  - conda env create -f tp.yml
+  - conda env create -q -f tp.yml
   - source activate torchpractice
 # command to run tests
 script:
