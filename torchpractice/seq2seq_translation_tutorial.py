@@ -84,6 +84,7 @@ And for more, read the papers that introduced these topics:
 **Requirements**
 """
 from __future__ import unicode_literals, print_function, division
+import os
 from io import open
 import unicodedata
 import string
@@ -95,7 +96,8 @@ import torch.nn as nn
 from torch import optim
 import torch.nn.functional as F
 
-device = "cpu"
+device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+print(device)
 
 ######################################################################
 # Loading data files
@@ -187,6 +189,7 @@ def unicodeToAscii(s):
         if unicodedata.category(c) != 'Mn'
     )
 
+
 # Lowercase, trim, and remove non-letter characters
 
 
@@ -208,7 +211,7 @@ def readLangs(lang1, lang2, reverse=False):
     print("Reading lines...")
 
     # Read the file and split into lines
-    lines = open('data/%s-%s.txt' % (lang1, lang2), encoding='utf-8').\
+    lines = open('data/%s-%s.txt' % (lang1, lang2), encoding='utf-8'). \
         read().strip().split('\n')
 
     # Split every line into pairs and normalize
@@ -249,8 +252,8 @@ eng_prefixes = (
 
 def filterPair(p):
     return len(p[0].split(' ')) < MAX_LENGTH and \
-        len(p[1].split(' ')) < MAX_LENGTH and \
-        p[1].startswith(eng_prefixes)
+           len(p[1].split(' ')) < MAX_LENGTH and \
+           p[1].startswith(eng_prefixes)
 
 
 def filterPairs(pairs):
@@ -351,6 +354,7 @@ class EncoderRNN(nn.Module):
     def initHidden(self):
         return torch.zeros(1, 1, self.hidden_size)
 
+
 ######################################################################
 # The Decoder
 # -----------
@@ -398,6 +402,7 @@ class DecoderRNN(nn.Module):
 
     def initHidden(self):
         return torch.zeros(1, 1, self.hidden_size)
+
 
 ######################################################################
 # I encourage you to train and observe the results of this model, but to
@@ -538,7 +543,8 @@ def tensorsFromPair(pair):
 teacher_forcing_ratio = 0.5
 
 
-def train(input_tensor, target_tensor, encoder, decoder, encoder_optimizer, decoder_optimizer, criterion, max_length=MAX_LENGTH):
+def train(input_tensor, target_tensor, encoder, decoder, encoder_optimizer, decoder_optimizer, criterion,
+          max_length=MAX_LENGTH):
     encoder_hidden = encoder.initHidden()
 
     encoder_optimizer.zero_grad()
@@ -625,7 +631,8 @@ def timeSince(since, percent):
 # of examples, time so far, estimated time) and average loss.
 #
 
-def trainIters(encoder, decoder, n_iters, print_every=1000, plot_every=100, learning_rate=0.01):
+def trainIters(encoder, decoder, n_iters, print_every=100, plot_every=100, learning_rate=0.01):
+    save_every = 100
     start = time.time()
     plot_losses = []
     print_loss_total = 0  # Reset every print_every
@@ -653,6 +660,10 @@ def trainIters(encoder, decoder, n_iters, print_every=1000, plot_every=100, lear
             print('%s (%d %d%%) %.4f' % (timeSince(start, iter / n_iters),
                                          iter, iter / n_iters * 100, print_loss_avg))
 
+        if iter % save_every == 0:
+            torch.save(encoder, "encoder" + getSuffixe(input_lang, output_lang))
+            torch.save(decoder, "decoder" + getSuffixe(input_lang, output_lang))
+
         if iter % plot_every == 0:
             plot_loss_avg = plot_loss_total / plot_every
             plot_losses.append(plot_loss_avg)
@@ -670,6 +681,7 @@ def trainIters(encoder, decoder, n_iters, print_every=1000, plot_every=100, lear
 #
 
 import matplotlib.pyplot as plt
+
 plt.switch_backend('agg')
 import matplotlib.ticker as ticker
 import numpy as np
@@ -682,6 +694,8 @@ def showPlot(points):
     loc = ticker.MultipleLocator(base=0.2)
     ax.yaxis.set_major_locator(loc)
     plt.plot(points)
+    plt.savefig('fig.png')
+    plt.close()
 
 
 ######################################################################
@@ -747,6 +761,22 @@ def evaluateRandomly(encoder, decoder, n=10):
         print('')
 
 
+def getSuffixe(input_lang, output_lang):
+    return "-" + input_lang.name + '-' + output_lang.name + '.pth'
+
+
+def loadEncoder(input_lang, output_lang, hidden_size, nn_type='encoder'):
+    if os.path.isfile(nn_type + getSuffixe(input_lang, output_lang)):
+        return torch.load(nn_type + getSuffixe(input_lang, output_lang))
+    elif os.path.isfile(nn_type + '.pth'):
+        return torch.load(nn_type + '.pth')
+    else:
+        if nn_type == 'encoder':
+            return EncoderRNN(input_lang.n_words, hidden_size)
+        else:
+            return AttnDecoderRNN(hidden_size, output_lang.n_words, dropout_p=0.1)
+
+
 ######################################################################
 # Training and Evaluating
 # =======================
@@ -767,16 +797,17 @@ def evaluateRandomly(encoder, decoder, n=10):
 #
 
 hidden_size = 256
-encoder1 = EncoderRNN(input_lang.n_words, hidden_size)
-attn_decoder1 = AttnDecoderRNN(hidden_size, output_lang.n_words, dropout_p=0.1)
+encoder1 = loadEncoder(input_lang, output_lang, hidden_size)
+# torch.load('encoder' + input_lang + '-' + output_lang + '.pth') #EncoderRNN(input_lang.n_words, hidden_size)
+attn_decoder1 = loadEncoder(input_lang, output_lang, hidden_size, 'decoder')
+# torch.load('decoder.pth')  #AttnDecoderRNN(hidden_size, output_lang.n_words, dropout_p=0.1)
 
-trainIters(encoder1, attn_decoder1, 75000, print_every=5000)
+trainIters(encoder1, attn_decoder1, 300, print_every=100)
 
 ######################################################################
 #
 
 evaluateRandomly(encoder1, attn_decoder1)
-
 
 ######################################################################
 # Visualizing Attention
@@ -818,7 +849,8 @@ def showAttention(input_sentence, output_words, attentions):
     ax.xaxis.set_major_locator(ticker.MultipleLocator(1))
     ax.yaxis.set_major_locator(ticker.MultipleLocator(1))
 
-    plt.show()
+    plt.show(block=True)
+    plt.savefig('att.png')
 
 
 def evaluateAndShowAttention(input_sentence):
@@ -837,7 +869,7 @@ evaluateAndShowAttention("je ne crains pas de mourir .")
 
 evaluateAndShowAttention("c est un jeune directeur plein de talent .")
 
-
+evaluateAndShowAttention("j ai faim .")
 ######################################################################
 # Exercises
 # =========
